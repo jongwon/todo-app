@@ -1,11 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
+import { authOptions } from '@/lib/auth'
 import { CreateProjectData } from '@/types'
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: '인증이 필요합니다.' },
+        { status: 401 }
+      )
+    }
+
     const projects = await prisma.project.findMany({
       where: {
+        userId: session.user.id,
         isActive: true
       },
       include: {
@@ -30,13 +42,23 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: '인증이 필요합니다.' },
+        { status: 401 }
+      )
+    }
+
     const body: CreateProjectData = await request.json()
     
     const project = await prisma.project.create({
       data: {
         title: body.title,
         description: body.description,
-        color: body.color || '#3B82F6'
+        color: body.color || '#3B82F6',
+        userId: session.user.id
       },
       include: {
         _count: {

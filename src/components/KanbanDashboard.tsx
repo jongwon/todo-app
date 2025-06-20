@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Search, Filter, MoreHorizontal, Star, Calendar, User, FolderPlus, Menu, X } from 'lucide-react'
+import { useSession, signOut } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { Plus, Search, Filter, MoreHorizontal, Star, Calendar, User, FolderPlus, Menu, X, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { TaskWithProject, TaskStatus, ProjectWithTasks } from '@/types'
@@ -36,6 +38,8 @@ const COLUMNS = [
 ]
 
 export default function KanbanDashboard() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const [projects, setProjects] = useState<ProjectWithTasks[]>([])
   const [selectedProject, setSelectedProject] = useState<ProjectWithTasks | null>(null)
   const [tasks, setTasks] = useState<TaskWithProject[]>([])
@@ -47,6 +51,15 @@ export default function KanbanDashboard() {
   const [loading, setLoading] = useState(true)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<TaskStatus>('TODO')
+
+  // 인증 확인
+  useEffect(() => {
+    if (status === 'loading') return // 아직 로딩 중
+    if (!session) {
+      router.push('/auth/signin')
+      return
+    }
+  }, [session, status, router])
 
   // 프로젝트 목록 가져오기
   useEffect(() => {
@@ -157,6 +170,24 @@ export default function KanbanDashboard() {
       case 'LOW': return 'bg-green-500'
       default: return 'bg-gray-500'
     }
+  }
+
+  // 인증 로딩 중이거나 인증되지 않은 경우
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-float">
+            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <p className="text-gray-600">로딩 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!session) {
+    return null // 리다이렉션 처리 중
   }
 
   return (
@@ -275,8 +306,31 @@ export default function KanbanDashboard() {
           </div>
         </div>
 
-        {/* 새 태스크 버튼 */}
+        {/* 사용자 정보 및 로그아웃 */}
         <div className="p-6 border-t border-white/20">
+          <div className="flex items-center justify-between mb-4 p-3 bg-white/30 rounded-xl">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                <User className="w-4 h-4 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {session?.user?.name || '사용자'}
+                </p>
+                <p className="text-xs text-gray-500 truncate">
+                  {session?.user?.email}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="로그아웃"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+
           <button
             onClick={() => {
               setSelectedTask(null)

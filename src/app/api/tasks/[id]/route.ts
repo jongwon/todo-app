@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
+import { authOptions } from '@/lib/auth'
 import { UpdateTaskData } from '@/types'
 
 export async function GET(
@@ -7,8 +9,20 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const task = await prisma.task.findUnique({
-      where: { id: params.id },
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: '인증이 필요합니다.' },
+        { status: 401 }
+      )
+    }
+
+    const task = await prisma.task.findFirst({
+      where: { 
+        id: params.id,
+        userId: session.user.id
+      },
       include: {
         project: true
       }
@@ -36,7 +50,31 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: '인증이 필요합니다.' },
+        { status: 401 }
+      )
+    }
+
     const body: UpdateTaskData = await request.json()
+    
+    // 태스크가 해당 사용자의 것인지 먼저 확인
+    const existingTask = await prisma.task.findFirst({
+      where: {
+        id: params.id,
+        userId: session.user.id
+      }
+    })
+
+    if (!existingTask) {
+      return NextResponse.json(
+        { error: '할일을 찾을 수 없습니다.' },
+        { status: 404 }
+      )
+    }
     
     const updateData: any = { ...body }
     if (body.dueDate) {
@@ -66,6 +104,30 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: '인증이 필요합니다.' },
+        { status: 401 }
+      )
+    }
+
+    // 태스크가 해당 사용자의 것인지 먼저 확인
+    const existingTask = await prisma.task.findFirst({
+      where: {
+        id: params.id,
+        userId: session.user.id
+      }
+    })
+
+    if (!existingTask) {
+      return NextResponse.json(
+        { error: '할일을 찾을 수 없습니다.' },
+        { status: 404 }
+      )
+    }
+
     await prisma.task.delete({
       where: { id: params.id }
     })
