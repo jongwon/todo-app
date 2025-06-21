@@ -177,7 +177,7 @@ export default function CalendarView({
             ) : (
               selectedDateTasks.map((task, index) => {
                 const isOverdue = isPast(new Date(task.dueDate!)) && task.status !== 'DONE'
-                const isToday = isToday(new Date(task.dueDate!))
+                const isDueToday = isToday(new Date(task.dueDate!))
                 
                 return (
                   <div
@@ -189,7 +189,7 @@ export default function CalendarView({
                     className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 hover:shadow-md animate-slideIn ${
                       isOverdue 
                         ? 'bg-red-50 border-red-200 hover:bg-red-100' 
-                        : isToday
+                        : isDueToday
                         ? 'bg-orange-50 border-orange-200 hover:bg-orange-100'
                         : task.status === 'DONE'
                         ? 'bg-green-50 border-green-200 hover:bg-green-100'
@@ -204,7 +204,7 @@ export default function CalendarView({
                       {isOverdue && (
                         <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 ml-2" />
                       )}
-                      {isToday && (
+                      {isDueToday && (
                         <Clock className="w-4 h-4 text-orange-500 flex-shrink-0 ml-2" />
                       )}
                     </div>
