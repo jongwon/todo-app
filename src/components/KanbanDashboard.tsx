@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, Filter, MoreHorizontal, Star, Calendar, User, FolderPlus, Menu, X, LogOut } from 'lucide-react'
+import { Plus, Search, Filter, MoreHorizontal, Star, Calendar, User, FolderPlus, Menu, X, LogOut, FolderOpen, Grid3X3, CalendarDays } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { TaskWithProject, TaskStatus, ProjectWithTasks } from '@/types'
 import TaskModal from '@/components/TaskModal'
 import ProjectModal from '@/components/ProjectModal'
+import CalendarView from '@/components/CalendarView'
 
 const COLUMNS = [
   { 
@@ -51,6 +52,7 @@ export default function KanbanDashboard() {
   const [loading, setLoading] = useState(true)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<TaskStatus>('TODO')
+  const [currentView, setCurrentView] = useState<'kanban' | 'calendar'>('kanban')
 
   // 인증 확인
   useEffect(() => {
@@ -371,6 +373,32 @@ export default function KanbanDashboard() {
             </div>
             
             <div className="flex items-center space-x-2 lg:space-x-3">
+              {/* 뷰 전환 버튼 */}
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setCurrentView('kanban')}
+                  className={`p-2 rounded-md transition-all duration-200 ${
+                    currentView === 'kanban'
+                      ? 'bg-white shadow-sm text-blue-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  title="칸반 보드"
+                >
+                  <Grid3X3 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setCurrentView('calendar')}
+                  className={`p-2 rounded-md transition-all duration-200 ${
+                    currentView === 'calendar'
+                      ? 'bg-white shadow-sm text-blue-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                  title="캘린더 뷰"
+                >
+                  <CalendarDays className="w-4 h-4" />
+                </button>
+              </div>
+
               <div className="relative hidden sm:block">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
@@ -397,34 +425,50 @@ export default function KanbanDashboard() {
           </div>
         </div>
 
-        {/* 모바일 탭 네비게이션 */}
-        <div className="lg:hidden border-b border-gray-200 bg-white/80 backdrop-blur-sm">
-          <div className="flex overflow-x-auto scrollbar-hide">
-            {COLUMNS.map((column) => (
-              <button
-                key={column.id}
-                onClick={() => setActiveTab(column.id as TaskStatus)}
-                className={`flex-shrink-0 px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-all duration-200 ${
-                  activeTab === column.id
-                    ? 'border-blue-500 text-blue-600 bg-blue-50'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center space-x-2">
-                  <span className="text-base">{column.icon}</span>
-                  <span>{column.title}</span>
-                  <span className="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-full">
-                    {getTasksByStatus(column.id).length}
-                  </span>
-                </div>
-              </button>
-            ))}
+        {/* 모바일 탭 네비게이션 - 칸반 뷰에서만 표시 */}
+        {currentView === 'kanban' && (
+          <div className="lg:hidden border-b border-gray-200 bg-white/80 backdrop-blur-sm">
+            <div className="flex overflow-x-auto scrollbar-hide">
+              {COLUMNS.map((column) => (
+                <button
+                  key={column.id}
+                  onClick={() => setActiveTab(column.id as TaskStatus)}
+                  className={`flex-shrink-0 px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-all duration-200 ${
+                    activeTab === column.id
+                      ? 'border-blue-500 text-blue-600 bg-blue-50'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2">
+                    <span className="text-base">{column.icon}</span>
+                    <span>{column.title}</span>
+                    <span className="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-full">
+                      {getTasksByStatus(column.id).length}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* 모바일 칸반 뷰 */}
-        <div className="lg:hidden flex-1 overflow-y-auto">
-          {COLUMNS.filter(column => column.id === activeTab).map((column, columnIndex) => (
+        {/* 메인 콘텐츠 영역 */}
+        <div className="flex-1 overflow-hidden">
+          {currentView === 'calendar' ? (
+            <div className="h-full p-4 lg:p-8">
+              <CalendarView
+                tasks={tasks}
+                selectedProject={selectedProject}
+                onTaskUpdate={handleTaskUpdated}
+                onTaskDelete={handleTaskDeleted}
+                onTaskCreate={handleTaskCreated}
+              />
+            </div>
+          ) : (
+            <>
+              {/* 모바일 칸반 뷰 */}
+              <div className="lg:hidden flex-1 overflow-y-auto">
+                {COLUMNS.filter(column => column.id === activeTab).map((column, columnIndex) => (
             <div key={column.id} className="h-full flex flex-col">
               {/* 모바일 컬럼 헤더 */}
               <div className={`bg-gradient-to-r ${column.color} p-4 m-4 rounded-xl`}>
@@ -569,107 +613,110 @@ export default function KanbanDashboard() {
           ))}
         </div>
 
-        {/* PC 칸반 컬럼들 */}
-        <div className="hidden lg:flex flex-1 p-8 overflow-x-auto custom-scrollbar">
-          <div className="flex space-x-6 h-full min-w-max">
-            {COLUMNS.map((column, columnIndex) => (
-              <div
-                key={column.id}
-                className={`w-80 ${column.bgColor} rounded-2xl shadow-lg border border-white/20 flex flex-col animate-slideIn backdrop-blur-sm`}
-                style={{ animationDelay: `${columnIndex * 100}ms` }}
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, column.id)}
-              >
-                {/* 컬럼 헤더 */}
-                <div className={`bg-gradient-to-r ${column.color} p-6 rounded-t-2xl`}>
-                  <div className="flex items-center justify-between text-white">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-xl">{column.icon}</span>
-                      <div>
-                        <h3 className="font-semibold text-lg">{column.title}</h3>
-                        <span className="text-sm opacity-90">{getTasksByStatus(column.id).length}개</span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        if (!selectedProject) return
-                        setSelectedTask(null)
-                        setDefaultStatus(column.id as TaskStatus)
-                        setShowTaskModal(true)
-                      }}
-                      disabled={!selectedProject}
-                      className="p-2 hover:bg-white/20 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-110"
-                    >
-                      <Plus className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* 태스크 카드들 */}
-                <div className="flex-1 p-4 space-y-4 overflow-y-auto custom-scrollbar">
-                  {getTasksByStatus(column.id).map((task, taskIndex) => (
+              {/* PC 칸반 컬럼들 */}
+              <div className="hidden lg:flex flex-1 p-8 overflow-x-auto custom-scrollbar">
+                <div className="flex space-x-6 h-full min-w-max">
+                  {COLUMNS.map((column, columnIndex) => (
                     <div
-                      key={task.id}
-                      draggable
-                      onDragStart={() => handleDragStart(task)}
-                      onClick={() => {
-                        setSelectedTask(task)
-                        setShowTaskModal(true)
-                      }}
-                      className={`bg-white rounded-xl p-5 cursor-move hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] border border-gray-100 animate-slideIn ${
-                        draggedTask?.id === task.id ? 'opacity-50 rotate-2 scale-105 shadow-2xl' : ''
-                      }`}
-                      style={{ animationDelay: `${(columnIndex * 100) + (taskIndex * 50)}ms` }}
+                      key={column.id}
+                      className={`w-80 ${column.bgColor} rounded-2xl shadow-lg border border-white/20 flex flex-col animate-slideIn backdrop-blur-sm`}
+                      style={{ animationDelay: `${columnIndex * 100}ms` }}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, column.id)}
                     >
-                      <div className="flex items-start justify-between mb-3">
-                        <h4 className="font-semibold text-gray-900 line-clamp-2 text-sm leading-relaxed">
-                          {task.title}
-                        </h4>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setSelectedTask(task)
-                            setShowTaskModal(true)
-                          }}
-                          className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-50 transition-colors"
-                        >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
-                      </div>
-                      
-                      {task.description && (
-                        <p className="text-sm text-gray-600 mb-4 line-clamp-2 leading-relaxed">
-                          {task.description}
-                        </p>
-                      )}
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)} shadow-sm`}></div>
-                          {task.dueDate && (
-                            <span className={`text-xs font-medium px-2 py-1 rounded-lg ${
-                              new Date(task.dueDate) < new Date() && task.status !== 'DONE'
-                                ? 'text-red-600 bg-red-50' 
-                                : 'text-gray-600 bg-gray-50'
-                            }`}>
-                              {new Date(task.dueDate).toLocaleDateString()}
-                            </span>
-                          )}
+                      {/* 컬럼 헤더 */}
+                      <div className={`bg-gradient-to-r ${column.color} p-6 rounded-t-2xl`}>
+                        <div className="flex items-center justify-between text-white">
+                          <div className="flex items-center space-x-3">
+                            <span className="text-xl">{column.icon}</span>
+                            <div>
+                              <h3 className="font-semibold text-lg">{column.title}</h3>
+                              <span className="text-sm opacity-90">{getTasksByStatus(column.id).length}개</span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (!selectedProject) return
+                              setSelectedTask(null)
+                              setDefaultStatus(column.id as TaskStatus)
+                              setShowTaskModal(true)
+                            }}
+                            disabled={!selectedProject}
+                            className="p-2 hover:bg-white/20 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-110"
+                          >
+                            <Plus className="w-5 h-5" />
+                          </button>
                         </div>
+                      </div>
+
+                      {/* 태스크 카드들 */}
+                      <div className="flex-1 p-4 space-y-4 overflow-y-auto custom-scrollbar">
+                        {getTasksByStatus(column.id).map((task, taskIndex) => (
+                          <div
+                            key={task.id}
+                            draggable
+                            onDragStart={() => handleDragStart(task)}
+                            onClick={() => {
+                              setSelectedTask(task)
+                              setShowTaskModal(true)
+                            }}
+                            className={`bg-white rounded-xl p-5 cursor-move hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] border border-gray-100 animate-slideIn ${
+                              draggedTask?.id === task.id ? 'opacity-50 rotate-2 scale-105 shadow-2xl' : ''
+                            }`}
+                            style={{ animationDelay: `${(columnIndex * 100) + (taskIndex * 50)}ms` }}
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <h4 className="font-semibold text-gray-900 line-clamp-2 text-sm leading-relaxed">
+                                {task.title}
+                              </h4>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedTask(task)
+                                  setShowTaskModal(true)
+                                }}
+                                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-50 transition-colors"
+                              >
+                                <MoreHorizontal className="w-4 h-4" />
+                              </button>
+                            </div>
+                            
+                            {task.description && (
+                              <p className="text-sm text-gray-600 mb-4 line-clamp-2 leading-relaxed">
+                                {task.description}
+                              </p>
+                            )}
+
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)} shadow-sm`}></div>
+                                {task.dueDate && (
+                                  <span className={`text-xs font-medium px-2 py-1 rounded-lg ${
+                                    new Date(task.dueDate) < new Date() && task.status !== 'DONE'
+                                      ? 'text-red-600 bg-red-50' 
+                                      : 'text-gray-600 bg-gray-50'
+                                  }`}>
+                                    {new Date(task.dueDate).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {getTasksByStatus(column.id).length === 0 && (
+                          <div className="text-center py-8 text-gray-400">
+                            <div className="text-4xl mb-2">{column.icon}</div>
+                            <p className="text-sm">할일이 없습니다</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
-                  
-                  {getTasksByStatus(column.id).length === 0 && (
-                    <div className="text-center py-8 text-gray-400">
-                      <div className="text-4xl mb-2">{column.icon}</div>
-                      <p className="text-sm">할일이 없습니다</p>
-                    </div>
-                  )}
                 </div>
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
       </div>
 

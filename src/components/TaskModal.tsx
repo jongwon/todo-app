@@ -10,19 +10,26 @@ interface TaskModalProps {
   task?: TaskWithProject | null
   projectId: string
   defaultStatus?: TaskStatus
+  defaultDueDate?: Date | null
   onClose: () => void
   onSave: (task: TaskWithProject) => void
   onDelete?: (taskId: string) => void
 }
 
-export default function TaskModal({ task, projectId, defaultStatus = 'TODO', onClose, onSave, onDelete }: TaskModalProps) {
+export default function TaskModal({ task, projectId, defaultStatus = 'TODO', defaultDueDate, onClose, onSave, onDelete }: TaskModalProps) {
   const [title, setTitle] = useState(task?.title || '')
   const [description, setDescription] = useState(task?.description || '')
   const [status, setStatus] = useState(task?.status || defaultStatus)
   const [priority, setPriority] = useState(task?.priority || 'MEDIUM')
-  const [dueDate, setDueDate] = useState(
-    task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : ''
-  )
+  const [dueDate, setDueDate] = useState(() => {
+    if (task?.dueDate) {
+      return new Date(task.dueDate).toISOString().split('T')[0]
+    }
+    if (defaultDueDate) {
+      return defaultDueDate.toISOString().split('T')[0]
+    }
+    return ''
+  })
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
 

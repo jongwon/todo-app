@@ -17,19 +17,54 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const projectId = searchParams.get('projectId')
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    const hasDueDate = searchParams.get('hasDueDate')
 
-    const whereClause = projectId 
-      ? { projectId, userId: session.user.id } 
-      : { userId: session.user.id }
+    let whereClause: any = { userId: session.user.id }
+
+    // 프로젝트 필터
+    if (projectId) {
+      whereClause.projectId = projectId
+    }
+
+    // 날짜 범위 필터
+    if (startDate && endDate) {
+      whereClause.dueDate = {
+        gte: new Date(startDate),
+        lte: new Date(endDate)
+      }
+    } else if (startDate) {
+      whereClause.dueDate = {
+        gte: new Date(startDate)
+      }
+    } else if (endDate) {
+      whereClause.dueDate = {
+        lte: new Date(endDate)
+      }
+    }
+
+    // 마감일이 있는 할일만 조회
+    if (hasDueDate === 'true') {
+      whereClause.dueDate = {
+        ...whereClause.dueDate,
+        not: null
+      }
+    }
 
     const tasks = await prisma.task.findMany({
       where: whereClause,
       include: {
         project: true
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      orderBy: [
+        {
+          dueDate: 'asc'
+        },
+        {
+          createdAt: 'desc'
+        }
+      ]
     })
 
     return NextResponse.json(tasks)
